@@ -1,0 +1,116 @@
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        // Выводим пользователю выбор режима работы
+        Console.WriteLine("Выберите режим работы:");
+        Console.WriteLine("1 - Сервер");
+        Console.WriteLine("2 - Клиент");
+        string choice = Console.ReadLine();
+
+        // В зависимости от выбора запускаем сервер или клиент
+        if (choice == "1")
+        {
+            StartServer(); // Запуск сервера
+        }
+        else if (choice == "2")
+        {
+            StartClient(); // Запуск клиента
+        }
+        else
+        {
+            Console.WriteLine("Неверный выбор. Завершение работы.");
+        }
+    }
+
+    // Метод для запуска сервера
+    static void StartServer()
+    {
+        try
+        {
+            int port = 8080; // Порт для сервера
+            TcpListener listener = new TcpListener(IPAddress.Any, port); // Создание слушателя для всех IP-адресов
+            listener.Start(); // Запуск слушателя
+
+            Console.WriteLine("Сервер запущен. Ожидание подключений...");
+
+            while (true)
+            {
+                // Ожидание подключения клиента
+                TcpClient client = listener.AcceptTcpClient();
+                Console.WriteLine("Клиент подключён!");
+
+                NetworkStream stream = client.GetStream(); // Получаем поток данных от клиента
+
+                // Чтение данных от клиента
+                byte[] buffer = new byte[1024];
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead); // Преобразуем полученные байты в строку
+                Console.WriteLine("Сообщение от клиента: " + message);
+
+                // Ответ клиенту
+                string response = "Сообщение получено: " + message;
+                byte[] responseData = Encoding.UTF8.GetBytes(response); // Преобразуем ответ в байты
+                stream.Write(responseData, 0, responseData.Length); // Отправляем ответ клиенту
+
+                client.Close(); // Закрываем соединение с клиентом
+                Console.WriteLine("Клиент отключён.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Обработка исключений на сервере
+            Console.WriteLine("Ошибка сервера: " + ex.Message);
+        }
+    }
+
+    // Метод для запуска клиента
+    static void StartClient()
+    {
+        try
+        {
+            // Запрашиваем у пользователя IP-адрес сервера
+            Console.WriteLine("Введите IP-адрес сервера (по умолчанию 127.0.0.1):");
+            string serverIP = Console.ReadLine();
+            if (string.IsNullOrEmpty(serverIP))
+            {
+                serverIP = "127.0.0.1"; // Если пользователь не ввел адрес, используем localhost
+            }
+
+            int port = 8080; // Порт для подключения к серверу
+
+            // Создаем подключение к серверу
+            TcpClient client = new TcpClient(serverIP, port);
+            NetworkStream stream = client.GetStream(); // Получаем поток данных
+
+            // Запрашиваем сообщение для отправки серверу
+            Console.WriteLine("Введите сообщение для отправки серверу:");
+            string message = Console.ReadLine();
+            byte[] data = Encoding.UTF8.GetBytes(message); // Преобразуем сообщение в байты
+
+            // Отправляем сообщение серверу
+            stream.Write(data, 0, data.Length);
+            Console.WriteLine("Сообщение отправлено серверу.");
+
+            // Получаем ответ от сервера
+            byte[] buffer = new byte[1024];
+            int bytesRead = stream.Read(buffer, 0, buffer.Length); // Чтение данных от сервера
+            string response = Encoding.UTF8.GetString(buffer, 0, bytesRead); // Преобразуем ответ в строку
+            Console.WriteLine("Ответ от сервера: " + response);
+// Закрываем поток и соединение
+            stream.Close();
+            client.Close();
+        }
+        catch (Exception ex)
+        {
+            // Обработка исключений на стороне клиента
+            Console.WriteLine("Ошибка клиента: " + ex.Message);
+        }
+    }
+}
