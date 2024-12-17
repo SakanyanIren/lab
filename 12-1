@@ -1,0 +1,68 @@
+#include <iostream>
+#include <cstring>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <thread>
+
+#define PORT 8081
+#define BUFFER_SIZE 1024
+
+void send_data(int sock) {
+    const char* message = "Hello from Client1!";
+    while (true) {
+        send(sock, message, strlen(message), 0);
+        std::cout << "Ուղարկված հաղորդագրություն: " << message << std::endl;
+        sleep(2);
+    }
+}
+
+void receive_data(int sock) {
+    char buffer[BUFFER_SIZE] = {0};
+    while (true) {
+        int valread = read(sock, buffer, BUFFER_SIZE);
+        if (valread > 0) {
+            std::cout << "Սերվերից ստացված հաղորդագրություն: " << buffer << std::endl;
+        } else if (valread == 0) {
+            std::cout << "Սերվերը անջատվել է" << std::endl;
+            break;
+        } else {
+            perror("Տվյալների ստացման սխալ");
+            break;
+        }
+    }
+}
+
+int main() {
+    int sock = 0;
+    struct sockaddr_in server_address;
+
+    const char* client2_ip = "136.0.0.5";
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("Չհաջողվեց ստեղծել սոկետ");
+        return -1;
+    }
+
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, client2_ip, &server_address.sin_addr) <= 0) {
+        perror("Սխալ IP հասցե");
+        return -1;
+    }
+
+    if (connect(sock, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
+        perror("Չհաջողվեց կապ հաստատել");
+        return -1;
+    }
+
+    std::thread sender(send_data, sock);
+    std::thread receiver(receive_data, sock);
+
+    sender.join();
+    receiver.join();
+
+    close(sock);
+    return 0;
+}
